@@ -105,45 +105,39 @@ async function getDataParticipants() {
   return readNameColumn(DATA_SHEET_NAME);
 }
 
+// Clearing the cell (instead of deleteDimension, which needs a numeric
+// sheetId lookup first) saves a full extra API round-trip on every draw.
+// The row is left blank rather than removed, which is fine — readNameColumn
+// already skips blank cells, and it avoids other rows' numbers shifting.
 async function deleteDataRow(rowNumber) {
-  const map = await getSheetIdMap();
-  const sheetId = map[DATA_SHEET_NAME];
-  if (sheetId === undefined) {
-    throw new Error(`Sheet "${DATA_SHEET_NAME}" tidak ditemukan`);
-  }
   await withRetry(() =>
-    sheets.spreadsheets.batchUpdate({
+    sheets.spreadsheets.values.clear({
       spreadsheetId: SPREADSHEET_ID,
-      requestBody: {
-        requests: [
-          {
-            deleteDimension: {
-              range: {
-                sheetId,
-                dimension: "ROWS",
-                startIndex: rowNumber - 1,
-                endIndex: rowNumber,
-              },
-            },
-          },
-        ],
-      },
+      range: `${DATA_SHEET_NAME}!A${rowNumber}`,
     })
   );
 }
 
+// Try the append directly first (the common case, once MENANG already
+// exists, is just this one call). Only pay for the sheetId lookup +
+// sheet-creation round trip on the very first winner of the whole event.
 async function appendWinner(doorprizeName, winnerName) {
-  await ensureMenangSheetExists();
   const timestamp = new Date().toLocaleString("id-ID");
-  await withRetry(() =>
+  const doAppend = () =>
     sheets.spreadsheets.values.append({
       spreadsheetId: SPREADSHEET_ID,
       range: `${MENANG_SHEET_NAME}!A:C`,
       valueInputOption: "RAW",
       insertDataOption: "INSERT_ROWS",
       requestBody: { values: [[doorprizeName, winnerName, timestamp]] },
-    })
-  );
+    });
+
+  try {
+    await withRetry(doAppend, 0);
+  } catch (err) {
+    await ensureMenangSheetExists();
+    await withRetry(doAppend);
+  }
 }
 
 module.exports = {
