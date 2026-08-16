@@ -18,6 +18,8 @@ document.addEventListener("fullscreenchange", () => {
     : "Layar Penuh";
 });
 
+const PAUSE_BETWEEN_DRAWS_MS = 200;
+
 let session = []; // [{ prize, winner }]
 let phase = "idle"; // idle -> ready (list shown) -> drawing -> idle
 
@@ -45,6 +47,10 @@ function renderRows(activeIndex) {
 
 function setStatus(msg) {
   statusEl.textContent = msg;
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 startBtn.addEventListener("click", async () => {
@@ -101,6 +107,10 @@ async function runDraws() {
 
       session[i].winner = drawData.winner;
       renderRows(i + 1);
+
+      if (i < session.length - 1) {
+        await sleep(PAUSE_BETWEEN_DRAWS_MS);
+      }
     }
 
     setStatus("Sesi selesai! Semua doorprize sudah diundi.");
