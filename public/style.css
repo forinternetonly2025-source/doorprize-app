@@ -30,6 +30,18 @@ body {
   flex-direction: column;
 }
 
+/* Caps content width to the 16:9 area the background image actually
+   renders into (background-size: contain), so on very wide screens
+   (e.g. a 3:1 display) the title/table stay centered and proportional
+   instead of stretching into the letterboxed background on the sides. */
+.content,
+.controls {
+  width: 100%;
+  max-width: min(100%, 177.8vh);
+  margin-left: auto;
+  margin-right: auto;
+}
+
 .content {
   flex: 1;
   display: flex;
